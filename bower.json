@@ -2,10 +2,7 @@
     "author": {
         "name": "https://github.com/angular-ui/bootstrap/graphs/contributors"
     },
-    "name": "angular-bootstrap",
+    "name": "angular-bootstrap-blnight-bower",
     "version": "0.4.0",
-    "main": ["./ui-bootstrap-tpls.js"],
-    "dependencies": {
-        "angular": ">=1"
-    }    
+    "main": ["./ui-bootstrap-tpls.js"]
 }
