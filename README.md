@@ -1,4 +1,4 @@
 angular-bootstrap-blnight-bower
 ===============================
 
-Sngular-bootstrap with changes, prepared for bower
+angular-bootstrap with changes, prepared for bower
