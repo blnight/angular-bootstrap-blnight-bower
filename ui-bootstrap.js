@@ -1,4 +1,4 @@
-angular.module("ui.bootstrap", ["ui.bootstrap.transition","ui.bootstrap.collapse","ui.bootstrap.accordion","ui.bootstrap.alert","ui.bootstrap.buttons","ui.bootstrap.carousel","ui.bootstrap.position","ui.bootstrap.datepicker","ui.bootstrap.dialog","ui.bootstrap.dropdownToggle","ui.bootstrap.modal","ui.bootstrap.pagination","ui.bootstrap.tooltip","ui.bootstrap.popover","ui.bootstrap.progressbar","ui.bootstrap.rating","ui.bootstrap.tabs","ui.bootstrap.timepicker","ui.bootstrap.typeahead"]);
+angular.module("ui.bootstrap", ["ui.bootstrap.transition","ui.bootstrap.collapse","ui.bootstrap.accordion","ui.bootstrap.alert","ui.bootstrap.buttons","ui.bootstrap.carousel","ui.bootstrap.position","ui.bootstrap.datepicker","ui.bootstrap.dropdownToggle","ui.bootstrap.modal","ui.bootstrap.pagination","ui.bootstrap.tooltip","ui.bootstrap.popover","ui.bootstrap.progressbar","ui.bootstrap.rating","ui.bootstrap.tabs","ui.bootstrap.timepicker","ui.bootstrap.typeahead"]);
 angular.module('ui.bootstrap.transition', [])
 
 /**
@@ -1254,288 +1254,6 @@ function ($compile, $parse, $document, $position, dateFilter, datepickerPopupCon
   };
 }]);
 
-// The `$dialogProvider` can be used to configure global defaults for your
-// `$dialog` service.
-var dialogModule = angular.module('ui.bootstrap.dialog', ['ui.bootstrap.transition']);
-
-dialogModule.controller('MessageBoxController', ['$scope', 'dialog', 'model', function($scope, dialog, model){
-  $scope.title = model.title;
-  $scope.message = model.message;
-  $scope.buttons = model.buttons;
-  $scope.close = function(res){
-    dialog.close(res);
-  };
-}]);
-
-dialogModule.provider("$dialog", function(){
-
-  // The default options for all dialogs.
-  var defaults = {
-    backdrop: true,
-    dialogClass: 'modal',
-    backdropClass: 'modal-backdrop',
-    transitionClass: 'fade',
-    triggerClass: 'in',
-    dialogOpenClass: 'modal-open',
-    resolve:{},
-    backdropFade: false,
-    dialogFade:false,
-    keyboard: true, // close with esc key
-    backdropClick: true // only in conjunction with backdrop=true
-    /* other options: template, templateUrl, controller */
-	};
-
-	var globalOptions = {};
-
-  var activeBackdrops = {value : 0};
-
-  // The `options({})` allows global configuration of all dialogs in the application.
-  //
-  //      var app = angular.module('App', ['ui.bootstrap.dialog'], function($dialogProvider){
-  //        // don't close dialog when backdrop is clicked by default
-  //        $dialogProvider.options({backdropClick: false});
-  //      });
-	this.options = function(value){
-		globalOptions = value;
-	};
-
-  // Returns the actual `$dialog` service that is injected in controllers
-	this.$get = ["$http", "$document", "$compile", "$rootScope", "$controller", "$templateCache", "$q", "$transition", "$injector",
-  function ($http, $document, $compile, $rootScope, $controller, $templateCache, $q, $transition, $injector) {
-
-		var body = $document.find('body');
-
-		function createElement(clazz) {
-			var el = angular.element("<div>");
-			el.addClass(clazz);
-			return el;
-		}
-
-    // The `Dialog` class represents a modal dialog. The dialog class can be invoked by providing an options object
-    // containing at lest template or templateUrl and controller:
-    //
-    //     var d = new Dialog({templateUrl: 'foo.html', controller: 'BarController'});
-    //
-    // Dialogs can also be created using templateUrl and controller as distinct arguments:
-    //
-    //     var d = new Dialog('path/to/dialog.html', MyDialogController);
-		function Dialog(opts) {
-
-      var self = this, options = this.options = angular.extend({}, defaults, globalOptions, opts);
-      this._open = false;
-
-      this.backdropEl = createElement(options.backdropClass);
-      if(options.backdropFade){
-        this.backdropEl.addClass(options.transitionClass);
-        this.backdropEl.removeClass(options.triggerClass);
-      }
-
-      this.modalEl = createElement(options.dialogClass);
-      if(options.dialogFade){
-        this.modalEl.addClass(options.transitionClass);
-        this.modalEl.removeClass(options.triggerClass);
-      }
-
-      this.handledEscapeKey = function(e) {
-        if (e.which === 27) {
-          self.close();
-          e.preventDefault();
-          self.$scope.$apply();
-        }
-      };
-
-      this.handleBackDropClick = function(e) {
-        self.close();
-        e.preventDefault();
-        self.$scope.$apply();
-      };
-    }
-
-    // The `isOpen()` method returns wether the dialog is currently visible.
-    Dialog.prototype.isOpen = function(){
-      return this._open;
-    };
-
-    // The `open(templateUrl, controller)` method opens the dialog.
-    // Use the `templateUrl` and `controller` arguments if specifying them at dialog creation time is not desired.
-    Dialog.prototype.open = function(templateUrl, controller){
-      var self = this, options = this.options;
-
-      if(templateUrl){
-        options.templateUrl = templateUrl;
-      }
-      if(controller){
-        options.controller = controller;
-      }
-
-      if(!(options.template || options.templateUrl)) {
-        throw new Error('Dialog.open expected template or templateUrl, neither found. Use options or open method to specify them.');
-      }
-
-      this._loadResolves().then(function(locals) {
-        var $scope = locals.$scope = self.$scope = locals.$scope ? locals.$scope : $rootScope.$new();
-
-        self.modalEl.html(locals.$template);
-
-        if (self.options.controller) {
-          var ctrl = $controller(self.options.controller, locals);
-          self.modalEl.children().data('ngControllerController', ctrl);
-        }
-
-        $compile(self.modalEl)($scope);
-        self._addElementsToDom();
-
-        // trigger tranisitions
-        setTimeout(function(){
-          if(self.options.dialogFade){ self.modalEl.addClass(self.options.triggerClass); }
-          if(self.options.backdropFade){ self.backdropEl.addClass(self.options.triggerClass); }
-        });
-        body.addClass(defaults.dialogOpenClass);
-        self._bindEvents();
-      });
-
-      this.deferred = $q.defer();
-      return this.deferred.promise;
-    };
-
-    // closes the dialog and resolves the promise returned by the `open` method with the specified result.
-    Dialog.prototype.close = function(result){
-      var self = this;
-      var fadingElements = this._getFadingElements();
-
-      if(fadingElements.length > 0){
-        for (var i = fadingElements.length - 1; i >= 0; i--) {
-          $transition(fadingElements[i], removeTriggerClass).then(onCloseComplete);
-        }
-        return;
-      }
-
-      this._onCloseComplete(result);
-
-      function removeTriggerClass(el){
-        el.removeClass(self.options.triggerClass);
-      }
-
-      function onCloseComplete(){
-        if(self._open){
-          self._onCloseComplete(result);
-        }
-      }
-    };
-
-    Dialog.prototype._getFadingElements = function(){
-      var elements = [];
-      if(this.options.dialogFade){
-        elements.push(this.modalEl);
-      }
-      if(this.options.backdropFade){
-        elements.push(this.backdropEl);
-      }
-
-      return elements;
-    };
-
-    Dialog.prototype._bindEvents = function() {
-      if(this.options.keyboard){ body.bind('keydown', this.handledEscapeKey); }
-      if(this.options.backdrop && this.options.backdropClick){ this.backdropEl.bind('click', this.handleBackDropClick); }
-    };
-
-    Dialog.prototype._unbindEvents = function() {
-      if(this.options.keyboard){ body.unbind('keydown', this.handledEscapeKey); }
-      if(this.options.backdrop && this.options.backdropClick){ this.backdropEl.unbind('click', this.handleBackDropClick); }
-    };
-
-    Dialog.prototype._onCloseComplete = function(result) {
-      this._removeElementsFromDom();
-      this._unbindEvents();
-      body.removeClass(defaults.dialogOpenClass);
-      this.deferred.resolve(result);
-    };
-
-    Dialog.prototype._addElementsToDom = function(){
-      body.append(this.modalEl);
-
-      if(this.options.backdrop) { 
-        if (activeBackdrops.value === 0) {
-          body.append(this.backdropEl); 
-        }
-        activeBackdrops.value++;
-      }
-
-      this._open = true;
-    };
-
-    Dialog.prototype._removeElementsFromDom = function(){
-      this.modalEl.remove();
-
-      if(this.options.backdrop) { 
-        activeBackdrops.value--;
-        if (activeBackdrops.value === 0) {
-          this.backdropEl.remove(); 
-        }
-      }
-      this._open = false;
-    };
-
-    // Loads all `options.resolve` members to be used as locals for the controller associated with the dialog.
-    Dialog.prototype._loadResolves = function(){
-      var values = [], keys = [], templatePromise, self = this;
-
-      if (this.options.template) {
-        templatePromise = $q.when(this.options.template);
-      } else if (this.options.templateUrl) {
-        templatePromise = $http.get(this.options.templateUrl, {cache:$templateCache})
-        .then(function(response) { return response.data; });
-      }
-
-      angular.forEach(this.options.resolve || [], function(value, key) {
-        keys.push(key);
-        values.push(angular.isString(value) ? $injector.get(value) : $injector.invoke(value));
-      });
-
-      keys.push('$template');
-      values.push(templatePromise);
-
-      return $q.all(values).then(function(values) {
-        var locals = {};
-        angular.forEach(values, function(value, index) {
-          locals[keys[index]] = value;
-        });
-        locals.dialog = self;
-        return locals;
-      });
-    };
-
-    // The actual `$dialog` service that is injected in controllers.
-    return {
-      // Creates a new `Dialog` with the specified options.
-      dialog: function(opts){
-        return new Dialog(opts);
-      },
-      // creates a new `Dialog` tied to the default message box template and controller.
-      //
-      // Arguments `title` and `message` are rendered in the modal header and body sections respectively.
-      // The `buttons` array holds an object with the following members for each button to include in the
-      // modal footer section:
-      //
-      // * `result`: the result to pass to the `close` method of the dialog when the button is clicked
-      // * `label`: the label of the button
-      // * `cssClass`: additional css class(es) to apply to the button for styling
-      messageBox: function(title, message, buttons){
-        return new Dialog({templateUrl: 'template/dialog/message.html', controller: 'MessageBoxController', resolve:
-          {model: function() {
-            return {
-              title: title,
-              message: message,
-              buttons: buttons
-            };
-          }
-        }});
-      }
-    };
-  }];
-});
-
 /*
  * dropdownToggle - Provides dropdown menu functionality in place of bootstrap js
  * @restrict class or attribute
@@ -1588,93 +1306,364 @@ angular.module('ui.bootstrap.dropdownToggle', []).directive('dropdownToggle', ['
     }
   };
 }]);
-angular.module('ui.bootstrap.modal', ['ui.bootstrap.dialog'])
-.directive('modal', ['$parse', '$dialog', function($parse, $dialog) {
-  return {
-    restrict: 'EA',
-    terminal: true,
-    link: function(scope, elm, attrs) {
-      var opts = angular.extend({}, scope.$eval(attrs.uiOptions || attrs.bsOptions || attrs.options));
-      var shownExpr = attrs.modal || attrs.show;
-      var setClosed;
+angular.module('ui.bootstrap.modal', [])
 
-      // Create a dialog with the template as the contents of the directive
-      // Add the current scope as the resolve in order to make the directive scope as a dialog controller scope
-      opts = angular.extend(opts, {
-        template: elm.html(), 
-        resolve: { $scope: function() { return scope; } }
-      });
-      var dialog = $dialog.dialog(opts);
+/**
+ * A helper, internal data structure that acts as a map but also allows getting / removing
+ * elements in the LIFO order
+ */
+  .factory('$$stackedMap', function () {
+    return {
+      createNew: function () {
+        var stack = [];
 
-      elm.remove();
-
-      if (attrs.close) {
-        setClosed = function() {
-          $parse(attrs.close)(scope);
-        };
-      } else {
-        setClosed = function() {         
-          if (angular.isFunction($parse(shownExpr).assign)) {
-            $parse(shownExpr).assign(scope, false); 
+        return {
+          add: function (key, value) {
+            stack.push({
+              key: key,
+              value: value
+            });
+          },
+          get: function (key) {
+            for (var i = 0; i < stack.length; i++) {
+              if (key == stack[i].key) {
+                return stack[i];
+              }
+            }
+          },
+          top: function () {
+            return stack[stack.length - 1];
+          },
+          remove: function (key) {
+            var idx = -1;
+            for (var i = 0; i < stack.length; i++) {
+              if (key == stack[i].key) {
+                idx = i;
+                break;
+              }
+            }
+            return stack.splice(idx, 1)[0];
+          },
+          removeTop: function () {
+            return stack.splice(stack.length - 1, 1)[0];
+          },
+          length: function () {
+            return stack.length;
           }
         };
       }
+    };
+  })
 
-      scope.$watch(shownExpr, function(isShown, oldShown) {
-        if (isShown) {
-          dialog.open().then(function(){
-            setClosed();
-          });
-        } else {
-          //Make sure it is not opened
-          if (dialog.isOpen()){
-            dialog.close();
+/**
+ * A helper directive for the $modal service. It creates a backdrop element.
+ */
+  .directive('modalBackdrop', ['$modalStack', '$timeout', function ($modalStack, $timeout) {
+    return {
+      restrict: 'EA',
+      scope: {},
+      replace: true,
+      templateUrl: 'template/modal/backdrop.html',
+      link: function (scope, element, attrs) {
+
+        //trigger CSS transitions
+        $timeout(function () {
+          scope.animate = true;
+        });
+
+        scope.close = function (evt) {
+          var modal = $modalStack.getTop();
+          //TODO: this logic is duplicated with the place where modal gets opened
+          if (modal && modal.window.backdrop && modal.window.backdrop != 'static') {
+            evt.preventDefault();
+            evt.stopPropagation();
+            $modalStack.dismiss(modal.instance, 'backdrop click');
+          }
+        };
+      }
+    };
+  }])
+
+  .directive('modalWindow', ['$timeout', function ($timeout) {
+    return {
+      restrict: 'EA',
+      scope: {},
+      replace: true,
+      transclude: true,
+      templateUrl: 'template/modal/window.html',
+      link: function (scope, element, attrs) {
+        //trigger CSS transitions
+        $timeout(function () {
+          scope.animate = true;
+        });
+      }
+    };
+  }])
+
+  .factory('$modalStack', ['$document', '$compile', '$rootScope', '$$stackedMap',
+    function ($document, $compile, $rootScope, $$stackedMap) {
+
+      var body = $document.find('body').eq(0);
+      var openedWindows = $$stackedMap.createNew();
+      var $modalStack = {};
+
+      function removeModalWindow(modalInstance) {
+
+        var modalWindow = openedWindows.get(modalInstance).value;
+
+        //clean up the stack
+        openedWindows.remove(modalInstance);
+
+        //remove DOM element
+        modalWindow.modalDomEl.remove();
+
+        //remove backdrop
+        if (modalWindow.backdropDomEl) {
+          modalWindow.backdropDomEl.remove();
+        }
+
+        //destroy scope
+        modalWindow.modalScope.$destroy();
+      }
+
+      $document.bind('keydown', function (evt) {
+        var modal;
+
+        if (evt.which === 27) {
+          modal = openedWindows.top();
+          if (modal && modal.value.keyboard) {
+            $rootScope.$apply(function () {
+              $modalStack.dismiss(modal.key);
+            });
           }
         }
       });
-    }
-  };
-}]);
+
+      $modalStack.open = function (modalInstance, modal) {
+
+        var backdropDomEl;
+        if (modal.backdrop) {
+          backdropDomEl = $compile(angular.element('<modal-backdrop>'))($rootScope);
+          body.append(backdropDomEl);
+        }
+        var modalDomEl = $compile(angular.element('<modal-window>').html(modal.content))(modal.scope);
+        body.append(modalDomEl);
+
+        
+
+        openedWindows.add(modalInstance, {
+          deferred: modal.deferred,
+          modalScope: modal.scope,
+          modalDomEl: modalDomEl,
+          backdrop: modal.backdrop,
+          backdropDomEl: backdropDomEl,
+          keyboard: modal.keyboard
+        });
+      };
+
+      $modalStack.close = function (modalInstance, result) {
+        var modal = openedWindows.get(modalInstance);
+        if (modal) {
+          modal.value.deferred.resolve(result);
+          removeModalWindow(modalInstance);
+        }
+      };
+
+      $modalStack.dismiss = function (modalInstance, reason) {
+        var modalWindow = openedWindows.get(modalInstance).value;
+        if (modalWindow) {
+          modalWindow.deferred.reject(reason);
+          removeModalWindow(modalInstance);
+        }
+      };
+
+      $modalStack.getTop = function () {
+        var top = openedWindows.top();
+        if (top) {
+          return {
+            instance: top.key,
+            window: top.value
+          };
+        }
+      };
+
+      return $modalStack;
+    }])
+
+  .provider('$modal', function () {
+
+    var defaultOptions = {
+      backdrop: true, //can be also false or 'static'
+      keyboard: true
+    };
+
+    return {
+      options: defaultOptions,
+      $get: ['$injector', '$rootScope', '$q', '$http', '$templateCache', '$controller', '$modalStack',
+        function ($injector, $rootScope, $q, $http, $templateCache, $controller, $modalStack) {
+
+          var $modal = {};
+
+          function getTemplatePromise(options) {
+            return options.template ? $q.when(options.template) :
+              $http.get(options.templateUrl, {cache: $templateCache}).then(function (result) {
+                return result.data;
+              });
+          }
+
+          function getResolvePromises(resolves) {
+            var promisesArr = [];
+            angular.forEach(resolves, function (value, key) {
+              if (angular.isFunction(value) || angular.isArray(value)) {
+                promisesArr.push($q.when($injector.invoke(value)));
+              }
+            });
+            return promisesArr;
+          }
+
+          $modal.open = function (modalOptions) {
+
+            var modalResultDeferred = $q.defer();
+            var modalOpenedDeferred = $q.defer();
+
+            //prepare an instance of a modal to be injected into controllers and returned to a caller
+            var modalInstance = {
+              result: modalResultDeferred.promise,
+              opened: modalOpenedDeferred.promise,
+              close: function (result) {
+                $modalStack.close(this, result);
+              },
+              dismiss: function (reason) {
+                $modalStack.dismiss(this, reason);
+              }
+            };
+
+            //merge and clean up options
+            modalOptions = angular.extend(defaultOptions, modalOptions);
+            modalOptions.resolve = modalOptions.resolve || {};
+
+            //verify options
+            if (!modalOptions.template && !modalOptions.templateUrl) {
+              throw new Error('One of template or templateUrl options is required.');
+            }
+
+            var templateAndResolvePromise =
+              $q.all([getTemplatePromise(modalOptions)].concat(getResolvePromises(modalOptions.resolve)));
+
+
+            templateAndResolvePromise.then(function resolveSuccess(tplAndVars) {
+
+              var modalScope = (modalOptions.scope || $rootScope).$new();
+
+              var ctrlInstance, ctrlLocals = {};
+              var resolveIter = 1;
+
+              //controllers
+              if (modalOptions.controller) {
+                ctrlLocals.$scope = modalScope;
+                ctrlLocals.$modalInstance = modalInstance;
+                angular.forEach(modalOptions.resolve, function (value, key) {
+                  ctrlLocals[key] = tplAndVars[resolveIter++];
+                });
+
+                ctrlInstance = $controller(modalOptions.controller, ctrlLocals);
+              }
+
+              $modalStack.open(modalInstance, {
+                scope: modalScope,
+                deferred: modalResultDeferred,
+                content: tplAndVars[0],
+                backdrop: modalOptions.backdrop,
+                keyboard: modalOptions.keyboard
+              });
+
+            }, function resolveError(reason) {
+              modalResultDeferred.reject(reason);
+            });
+
+            templateAndResolvePromise.then(function () {
+              modalOpenedDeferred.resolve(true);
+            }, function () {
+              modalOpenedDeferred.reject(false);
+            });
+
+            return modalInstance;
+          };
+
+          return $modal;
+        }]
+    };
+  });
 angular.module('ui.bootstrap.pagination', [])
 
-.controller('PaginationController', ['$scope', '$interpolate', function ($scope, $interpolate) {
+.controller('PaginationController', ['$scope', '$attrs', '$parse', '$interpolate', function ($scope, $attrs, $parse, $interpolate) {
+  var self = this;
 
-  this.currentPage = 1;
+  this.init = function(defaultItemsPerPage) {
+    if ($attrs.itemsPerPage) {
+      $scope.$parent.$watch($parse($attrs.itemsPerPage), function(value) {
+        self.itemsPerPage = parseInt(value, 10);
+        $scope.totalPages = self.calculateTotalPages();
+      });
+    } else {
+      this.itemsPerPage = defaultItemsPerPage;
+    }
+  };
 
   this.noPrevious = function() {
-    return this.currentPage === 1;
+    return this.page === 1;
   };
   this.noNext = function() {
-    return this.currentPage === $scope.numPages;
+    return this.page === $scope.totalPages;
   };
 
   this.isActive = function(page) {
-    return this.currentPage === page;
+    return this.page === page;
   };
 
-  this.reset = function() {
-    $scope.pages = [];
-    this.currentPage = parseInt($scope.currentPage, 10);
-
-    if ( this.currentPage > $scope.numPages ) {
-      $scope.selectPage($scope.numPages);
-    }
-  };
-
-  var self = this;
-  $scope.selectPage = function(page) {
-    if ( ! self.isActive(page) && page > 0 && page <= $scope.numPages) {
-      $scope.currentPage = page;
-      $scope.onSelectPage({ page: page });
-    }
+  this.calculateTotalPages = function() {
+    return this.itemsPerPage < 1 ? 1 : Math.ceil($scope.totalItems / this.itemsPerPage);
   };
 
   this.getAttributeValue = function(attribute, defaultValue, interpolate) {
     return angular.isDefined(attribute) ? (interpolate ? $interpolate(attribute)($scope.$parent) : $scope.$parent.$eval(attribute)) : defaultValue;
   };
+
+  this.render = function() {
+    this.page = parseInt($scope.page, 10) || 1;
+    $scope.pages = this.getPages(this.page, $scope.totalPages);
+  };
+
+  $scope.selectPage = function(page) {
+    if ( ! self.isActive(page) && page > 0 && page <= $scope.totalPages) {
+      $scope.page = page;
+      $scope.onSelectPage({ page: page });
+    }
+  };
+
+  $scope.$watch('totalItems', function() {
+    $scope.totalPages = self.calculateTotalPages();
+  });
+
+  $scope.$watch('totalPages', function(value) {
+    if ( $attrs.numPages ) {
+      $scope.numPages = value; // Readonly variable
+    }
+
+    if ( self.page > value ) {
+      $scope.selectPage(value);
+    } else {
+      self.render();
+    }
+  });
+
+  $scope.$watch('page', function() {
+    self.render();
+  });
 }])
 
 .constant('paginationConfig', {
+  itemsPerPage: 10,
   boundaryLinks: false,
   directionLinks: true,
   firstText: 'First',
@@ -1684,14 +1673,14 @@ angular.module('ui.bootstrap.pagination', [])
   rotate: true
 })
 
-.directive('pagination', ['paginationConfig', function(config) {
+.directive('pagination', ['$parse', 'paginationConfig', function($parse, config) {
   return {
     restrict: 'EA',
     scope: {
-      numPages: '=',
-      currentPage: '=',
-      maxSize: '=',
-      onSelectPage: '&'
+      page: '=',
+      totalItems: '=',
+      onSelectPage:' &',
+      numPages: '='
     },
     controller: 'PaginationController',
     templateUrl: 'template/pagination/pagination.html',
@@ -1699,13 +1688,23 @@ angular.module('ui.bootstrap.pagination', [])
     link: function(scope, element, attrs, paginationCtrl) {
 
       // Setup configuration parameters
-      var boundaryLinks = paginationCtrl.getAttributeValue(attrs.boundaryLinks,  config.boundaryLinks      ),
-      directionLinks    = paginationCtrl.getAttributeValue(attrs.directionLinks, config.directionLinks     ),
-      firstText         = paginationCtrl.getAttributeValue(attrs.firstText,      config.firstText,     true),
-      previousText      = paginationCtrl.getAttributeValue(attrs.previousText,   config.previousText,  true),
-      nextText          = paginationCtrl.getAttributeValue(attrs.nextText,       config.nextText,      true),
-      lastText          = paginationCtrl.getAttributeValue(attrs.lastText,       config.lastText,      true),
-      rotate            = paginationCtrl.getAttributeValue(attrs.rotate,         config.rotate);
+      var maxSize,
+      boundaryLinks  = paginationCtrl.getAttributeValue(attrs.boundaryLinks,  config.boundaryLinks      ),
+      directionLinks = paginationCtrl.getAttributeValue(attrs.directionLinks, config.directionLinks     ),
+      firstText      = paginationCtrl.getAttributeValue(attrs.firstText,      config.firstText,     true),
+      previousText   = paginationCtrl.getAttributeValue(attrs.previousText,   config.previousText,  true),
+      nextText       = paginationCtrl.getAttributeValue(attrs.nextText,       config.nextText,      true),
+      lastText       = paginationCtrl.getAttributeValue(attrs.lastText,       config.lastText,      true),
+      rotate         = paginationCtrl.getAttributeValue(attrs.rotate,         config.rotate);
+
+      paginationCtrl.init(config.itemsPerPage);
+
+      if (attrs.maxSize) {
+        scope.$parent.$watch($parse(attrs.maxSize), function(value) {
+          maxSize = parseInt(value, 10);
+          paginationCtrl.render();
+        });
+      }
 
       // Create page object used in template
       function makePage(number, text, isActive, isDisabled) {
@@ -1717,76 +1716,79 @@ angular.module('ui.bootstrap.pagination', [])
         };
       }
 
-      scope.$watch('numPages + currentPage + maxSize', function() {
-        paginationCtrl.reset();
+      paginationCtrl.getPages = function(currentPage, totalPages) {
+        var pages = [];
 
         // Default page limits
-        var startPage = 1, endPage = scope.numPages;
-        var isMaxSized = ( angular.isDefined(scope.maxSize) && scope.maxSize < scope.numPages );
+        var startPage = 1, endPage = totalPages;
+        var isMaxSized = ( angular.isDefined(maxSize) && maxSize < totalPages );
 
         // recompute if maxSize
         if ( isMaxSized ) {
           if ( rotate ) {
             // Current page is displayed in the middle of the visible ones
-            startPage = Math.max(paginationCtrl.currentPage - Math.floor(scope.maxSize/2), 1);
-            endPage   = startPage + scope.maxSize - 1;
+            startPage = Math.max(currentPage - Math.floor(maxSize/2), 1);
+            endPage   = startPage + maxSize - 1;
 
             // Adjust if limit is exceeded
-            if (endPage > scope.numPages) {
-              endPage   = scope.numPages;
-              startPage = endPage - scope.maxSize + 1;
+            if (endPage > totalPages) {
+              endPage   = totalPages;
+              startPage = endPage - maxSize + 1;
             }
           } else {
             // Visible pages are paginated with maxSize
-            startPage = ((Math.ceil(paginationCtrl.currentPage / scope.maxSize) - 1) * scope.maxSize) + 1;
+            startPage = ((Math.ceil(currentPage / maxSize) - 1) * maxSize) + 1;
 
             // Adjust last page if limit is exceeded
-            endPage = Math.min(startPage + scope.maxSize - 1, scope.numPages);
+            endPage = Math.min(startPage + maxSize - 1, totalPages);
           }
         }
 
         // Add page number links
         for (var number = startPage; number <= endPage; number++) {
           var page = makePage(number, number, paginationCtrl.isActive(number), false);
-          scope.pages.push(page);
+          pages.push(page);
         }
 
         // Add links to move between page sets
         if ( isMaxSized && ! rotate ) {
           if ( startPage > 1 ) {
             var previousPageSet = makePage(startPage - 1, '...', false, false);
-            scope.pages.unshift(previousPageSet);
+            pages.unshift(previousPageSet);
           }
 
-          if ( endPage < scope.numPages ) {
+          if ( endPage < totalPages ) {
             var nextPageSet = makePage(endPage + 1, '...', false, false);
-            scope.pages.push(nextPageSet);
+            pages.push(nextPageSet);
           }
         }
 
         // Add previous & next links
         if (directionLinks) {
-          var previousPage = makePage(paginationCtrl.currentPage - 1, previousText, false, paginationCtrl.noPrevious());
-          scope.pages.unshift(previousPage);
+          var previousPage = makePage(currentPage - 1, previousText, false, paginationCtrl.noPrevious());
+          pages.unshift(previousPage);
 
-          var nextPage = makePage(paginationCtrl.currentPage + 1, nextText, false, paginationCtrl.noNext());
-          scope.pages.push(nextPage);
+          var nextPage = makePage(currentPage + 1, nextText, false, paginationCtrl.noNext());
+          pages.push(nextPage);
         }
 
         // Add first & last links
         if (boundaryLinks) {
           var firstPage = makePage(1, firstText, false, paginationCtrl.noPrevious());
-          scope.pages.unshift(firstPage);
+          pages.unshift(firstPage);
 
-          var lastPage = makePage(scope.numPages, lastText, false, paginationCtrl.noNext());
-          scope.pages.push(lastPage);
+          var lastPage = makePage(totalPages, lastText, false, paginationCtrl.noNext());
+          pages.push(lastPage);
         }
-      });
+
+        return pages;
+      };
     }
   };
 }])
 
 .constant('pagerConfig', {
+  itemsPerPage: 10,
   previousText: '« Previous',
   nextText: 'Next »',
   align: true
@@ -1796,9 +1798,10 @@ angular.module('ui.bootstrap.pagination', [])
   return {
     restrict: 'EA',
     scope: {
-      numPages: '=',
-      currentPage: '=',
-      onSelectPage: '&'
+      page: '=',
+      totalItems: '=',
+      onSelectPage:' &',
+      numPages: '='
     },
     controller: 'PaginationController',
     templateUrl: 'template/pagination/pager.html',
@@ -1809,6 +1812,8 @@ angular.module('ui.bootstrap.pagination', [])
       var previousText = paginationCtrl.getAttributeValue(attrs.previousText, config.previousText, true),
       nextText         = paginationCtrl.getAttributeValue(attrs.nextText,     config.nextText,     true),
       align            = paginationCtrl.getAttributeValue(attrs.align,        config.align);
+
+      paginationCtrl.init(config.itemsPerPage);
 
       // Create page object used in template
       function makePage(number, text, isDisabled, isPrevious, isNext) {
@@ -1821,16 +1826,12 @@ angular.module('ui.bootstrap.pagination', [])
         };
       }
 
-      scope.$watch('numPages + currentPage', function() {
-        paginationCtrl.reset();
-
-        // Add previous & next links
-        var previousPage = makePage(paginationCtrl.currentPage - 1, previousText, paginationCtrl.noPrevious(), true, false);
-        scope.pages.unshift(previousPage);
-
-        var nextPage = makePage(paginationCtrl.currentPage + 1, nextText, paginationCtrl.noNext(), false, true);
-        scope.pages.push(nextPage);
-      });
+      paginationCtrl.getPages = function(currentPage) {
+        return [
+          makePage(currentPage - 1, previousText, paginationCtrl.noPrevious(), true, false),
+          makePage(currentPage + 1, nextText, paginationCtrl.noNext(), false, true)
+        ];
+      };
     }
   };
 }]);
@@ -2301,22 +2302,47 @@ angular.module('ui.bootstrap.progressbar', ['ui.bootstrap.transition'])
 angular.module('ui.bootstrap.rating', [])
 
 .constant('ratingConfig', {
-  max: 5
+  max: 5,
+  stateOn: 'icon-star',
+  stateOff: 'icon-star-empty'
 })
 
 .controller('RatingController', ['$scope', '$attrs', '$parse', 'ratingConfig', function($scope, $attrs, $parse, ratingConfig) {
 
   this.maxRange = angular.isDefined($attrs.max) ? $scope.$parent.$eval($attrs.max) : ratingConfig.max;
+  this.stateOn = angular.isDefined($attrs.stateOn) ? $scope.$parent.$eval($attrs.stateOn) : ratingConfig.stateOn;
+  this.stateOff = angular.isDefined($attrs.stateOff) ? $scope.$parent.$eval($attrs.stateOff) : ratingConfig.stateOff;
 
-  $scope.range = [];
-  for (var i = 1; i <= this.maxRange; i++) {
-    $scope.range.push(i);
-  }
+  this.createDefaultRange = function(len) {
+    var defaultStateObject = {
+      stateOn: this.stateOn,
+      stateOff: this.stateOff
+    };
+
+    var states = new Array(len);
+    for (var i = 0; i < len; i++) {
+      states[i] = defaultStateObject;
+    }
+    return states;
+  };
+
+  this.normalizeRange = function(states) {
+    for (var i = 0, n = states.length; i < n; i++) {
+      states[i].stateOn = states[i].stateOn || this.stateOn;
+      states[i].stateOff = states[i].stateOff || this.stateOff;
+    }
+    return states;
+  };
+
+  // Get objects used in template
+  $scope.range = angular.isDefined($attrs.ratingStates) ?  this.normalizeRange(angular.copy($scope.$parent.$eval($attrs.ratingStates))): this.createDefaultRange(this.maxRange);
 
   $scope.rate = function(value) {
-    if ( ! $scope.readonly ) {
-      $scope.value = value;
+    if ( $scope.readonly || $scope.value === value) {
+      return;
     }
+
+    $scope.value = value;
   };
 
   $scope.enter = function(value) {
@@ -2443,7 +2469,7 @@ function TabsetCtrl($scope, $element) {
     templateUrl: 'template/tabs/tabset.html',
     compile: function(elm, attrs, transclude) {
       return function(scope, element, attrs, tabsetCtrl) {
-        scope.vertical = angular.isDefined(attrs.vertical) ? scope.$eval(attrs.vertical) : false;
+        scope.vertical = angular.isDefined(attrs.vertical) ? scope.$parent.$eval(attrs.vertical) : false;
         scope.type = angular.isDefined(attrs.type) ? scope.$parent.$eval(attrs.type) : 'tabs';
         scope.direction = angular.isDefined(attrs.direction) ? scope.$parent.$eval(attrs.direction) : 'top';
         scope.tabsAbove = (scope.direction != 'below');
@@ -3051,7 +3077,7 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.position'])
 
       //plug into $parsers pipeline to open a typeahead on view changes initiated from DOM
       //$parsers kick-in on all the changes coming from the view as well as manually triggered by $setViewValue
-      modelCtrl.$parsers.push(function (inputValue) {
+      modelCtrl.$parsers.unshift(function (inputValue) {
 
         resetMatches();
         if (inputValue && inputValue.length >= minSearch) {
