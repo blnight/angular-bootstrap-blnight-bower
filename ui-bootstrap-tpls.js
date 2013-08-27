@@ -1444,10 +1444,10 @@ angular.module('ui.bootstrap.modal', [])
 
         var backdropDomEl;
         if (modal.backdrop) {
-          backdropDomEl = $compile(angular.element('<modal-backdrop>'))($rootScope);
+          backdropDomEl = $compile(angular.element('<div modal-backdrop></div>'))($rootScope);
           body.append(backdropDomEl);
         }
-        var modalDomEl = $compile(angular.element('<modal-window>').html(modal.content))(modal.scope);
+        var modalDomEl = $compile(angular.element('<div modal-window></div>').html(modal.content))(modal.scope);
         body.append(modalDomEl);
 
         
@@ -3280,12 +3280,12 @@ angular.module("template/alert/alert.html", []).run(["$templateCache", function(
 angular.module("template/carousel/carousel.html", []).run(["$templateCache", function($templateCache) {
   $templateCache.put("template/carousel/carousel.html",
     "<div ng-mouseenter=\"pause()\" ng-mouseleave=\"play()\" class=\"carousel\">\n" +
-    "    <ol class=\"carousel-indicators\" ng-show=\"slides().length > 1\">\n" +
-    "        <li ng-repeat=\"slide in slides()\" ng-class=\"{active: isActive(slide)}\" ng-click=\"select(slide)\"></li>\n" +
-    "    </ol>\n" +
+    "    <!--<ol class=\"carousel-indicators\" ng-show=\"slides().length > 1\">-->\n" +
+    "        <!--<li ng-repeat=\"slide in slides()\" ng-class=\"{active: isActive(slide)}\" ng-click=\"select(slide)\"></li>-->\n" +
+    "    <!--</ol>-->\n" +
     "    <div class=\"carousel-inner\" ng-transclude></div>\n" +
-    "    <a ng-click=\"prev()\" class=\"carousel-control left\" ng-show=\"slides().length > 1\">&lsaquo;</a>\n" +
-    "    <a ng-click=\"next()\" class=\"carousel-control right\" ng-show=\"slides().length > 1\">&rsaquo;</a>\n" +
+    "    <!--<a ng-click=\"prev()\" class=\"carousel-control left\" ng-show=\"slides().length > 1\">&lsaquo;</a>-->\n" +
+    "    <!--<a ng-click=\"next()\" class=\"carousel-control right\" ng-show=\"slides().length > 1\">&rsaquo;</a>-->\n" +
     "</div>\n" +
     "");
 }]);
@@ -3351,7 +3351,7 @@ angular.module("template/modal/backdrop.html", []).run(["$templateCache", functi
 
 angular.module("template/modal/window.html", []).run(["$templateCache", function($templateCache) {
   $templateCache.put("template/modal/window.html",
-    "<div class=\"modal fade\" ng-class=\"{in: animate}\" ng-transclude></div>");
+    "<div class=\"modal fade wModal700\" ng-class=\"{in: animate}\" ng-transclude></div>");
 }]);
 
 angular.module("template/pagination/pager.html", []).run(["$templateCache", function($templateCache) {
