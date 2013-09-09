@@ -2462,7 +2462,7 @@ function TabsetCtrl($scope, $element) {
 
   ctrl.addTab = function addTab(tab) {
     tabs.push(tab);
-    if (tabs.length === 1 || tab.active) {
+    if ((tabs.length === 1 && tab.active !== false) || tab.active) {
       ctrl.select(tab);
     }
   };
